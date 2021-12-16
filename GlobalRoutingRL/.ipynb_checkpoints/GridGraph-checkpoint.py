@@ -272,6 +272,7 @@ def updateCapacity(capacity,route):
         diff = [route[i+1][0]-route[i][0],
                 route[i+1][1]-route[i][1],
                 route[i+1][2]-route[i][2]]
+
         if diff[0] == 1:
             capacity[route[i][0],route[i][1],route[i][2]-1,0] -= 1
             capacity[route[i+1][0], route[i+1][1], route[i+1][2]-1,1] -= 1

@@ -1,5 +1,3 @@
-import matplotlib
-# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
@@ -148,9 +146,9 @@ def gridParameters(grid_info):
 
 #
 if __name__ == '__main__':
-    # filename = 'adaptec1.capo70.2d.35.50.90.gr'
+    filename = 'adaptec1.capo70.2d.35.50.90.gr'
 #     filename = 'sampleBenchmark'
-    filename = 'small.gr'
+#     filename = 'small.gr'
 
     grid_info = read(filename)
     # print(grid_info)

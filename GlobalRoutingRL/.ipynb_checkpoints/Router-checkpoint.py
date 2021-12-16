@@ -319,8 +319,8 @@ def DRL_implementation(filename,globali):
 
         agent.replay = DQN_Implementation.Replay_Memory() #Remove memeory of previous training
 
-        agent.burn_in_memory_search(observationCombo, actionCombo, rewardCombo,
-            observation_nextCombo, is_terminalCombo)
+        agent.burn_in_memory_search(observationCombo,actionCombo,rewardCombo,
+            observation_nextCombo,is_terminalCombo)
 
         twoPinNum = 0
         twoPinNumEachNet = []
