@@ -28,7 +28,7 @@ def _processTwoPinData(gridParameters, grid_info, capacity):
     routeListMerged = []
     routeListNotMerged = []
 
-    print('gridParameters',gridParameters)
+    # print('gridParameters',gridParameters)
     # Getting two pin list combo (For RL)
     twopinListCombo = []
     twopinListComboCleared = []
@@ -213,7 +213,8 @@ def _processTwoPinData(gridParameters, grid_info, capacity):
         netNum = int(sortedHalfWireLength[i][0]) # i
         twoPinNum = twoPinNum + (init.gridParameters(grid_info)['netInfo'][netNum]['numPins'] - 1)
         twoPinNumEachNet.append(init.gridParameters(grid_info)['netInfo'][netNum]['numPins'] - 1)
-    return twopinlist_nonet, twoPinNumEachNet
+
+    return twopinlist_nonet, twoPinNumEachNet, twoPinEachNetClear, netSort
 
 
 def _feasibility(state, action, capacity):
