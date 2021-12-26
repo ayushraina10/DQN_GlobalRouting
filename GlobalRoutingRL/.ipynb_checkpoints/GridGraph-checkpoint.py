@@ -3,7 +3,7 @@ import matplotlib
 import numpy as np
 
 
-import Initializer as init
+import Env.DQN_GlobalRouting.GlobalRoutingRL.Initializer as init
 
 # Create grid graph based on parsed input info
 
@@ -22,6 +22,7 @@ class GridGraph(object):
         self.twopin_rdn = None
         self.loop = 0
         self.reward = 0.0
+        self.netreward = 0.0
         self.instantreward = 0.0
         self.instantrewardcombo = []
         self.best_reward = 0.0
@@ -34,6 +35,10 @@ class GridGraph(object):
         self.previous_action = -1
         self.posTwoPinNum = 0
         self.episode = 0
+
+        ##added new variables
+        self.twoPinEachNetClear = None
+        self.netSort = None
         return
     
     def get_net_pair(self):
@@ -131,50 +136,51 @@ class GridGraph(object):
         state = self.current_state
         reward = -1.0
         if action == 0 and self.capacity[state[0], state[1], state[2]-1, 0] > 0 :
-            nextState = (state[0]+1, state[1], state[2], state[3]+self.gridParameters['tileWidth'], state[4])
+            nextState = [state[0]+1, state[1], state[2], state[3]+self.gridParameters['tileWidth'], state[4]]
             if self.passby[state[0], state[1], state[2]-1, 0] == 0:
                 self.passby[state[0], state[1], state[2]-1, 0]+=1
                 self.passby[state[0]+1, state[1], state[2]-1, 1]+=1
                 self.capacity = updateCapacityRL(self.capacity, state, action)
-            self.route.append((state[3], state[4], state[2], state[0], state[1]))
+            self.route.append([state[3], state[4], state[2], state[0], state[1]])
         elif action == 1 and self.capacity[state[0], state[1], state[2]-1, 1] > 0 :
-            nextState = (state[0]-1, state[1], state[2], state[3]-self.gridParameters['tileWidth'], state[4])
+            nextState = [state[0]-1, state[1], state[2], state[3]-self.gridParameters['tileWidth'], state[4]]
             if self.passby[state[0], state[1], state[2]-1, 1] == 0:
                 self.passby[state[0], state[1], state[2]-1, 1]+=1
                 self.passby[state[0]-1, state[1], state[2]-1, 0]+=1
                 self.capacity = updateCapacityRL(self.capacity, state, action)
-            self.route.append((state[3], state[4], state[2], state[0], state[1]))
+            self.route.append([state[3], state[4], state[2], state[0], state[1]])
         elif action == 2 and self.capacity[state[0], state[1], state[2]-1, 2] > 0 :
-            nextState = (state[0], state[1]+1, state[2], state[3], state[4]+self.gridParameters['tileHeight'])
+            nextState = [state[0], state[1]+1, state[2], state[3], state[4]+self.gridParameters['tileHeight']]
             if self.passby[state[0], state[1], state[2]-1, 2] == 0:
                 self.passby[state[0], state[1], state[2]-1, 2]+=1
                 self.passby[state[0], state[1]+1, state[2]-1, 3]+=1
                 self.capacity = updateCapacityRL(self.capacity, state, action)
-            self.route.append((state[3], state[4], state[2], state[0], state[1]))
+            self.route.append([state[3], state[4], state[2], state[0], state[1]])
         elif action == 3 and self.capacity[state[0], state[1], state[2]-1, 3] > 0 :
-            nextState = (state[0], state[1]-1, state[2], state[3], state[4]-self.gridParameters['tileHeight'])
+            nextState = [state[0], state[1]-1, state[2], state[3], state[4]-self.gridParameters['tileHeight']]
             if self.passby[state[0], state[1], state[2]-1, 3] == 0:
                 self.passby[state[0], state[1], state[2]-1, 3]+=1
                 self.passby[state[0], state[1]-1, state[2]-1, 2]+=1
                 self.capacity = updateCapacityRL(self.capacity, state, action)
-            self.route.append((state[3], state[4], state[2], state[0], state[1]))
+            self.route.append([state[3], state[4], state[2], state[0], state[1]])
         elif action == 4 and self.capacity[state[0], state[1], state[2]-1, 4] > 0 :
-            nextState = (state[0], state[1], state[2]+1, state[3], state[4])
+            nextState = [state[0], state[1], state[2]+1, state[3], state[4]]
             if self.passby[state[0], state[1], state[2]-1, 4] == 0:
                 self.passby[state[0], state[1], state[2]-1, 4]+=1
                 self.passby[state[0], state[1], state[2], 5]+=1
                 self.capacity = updateCapacityRL(self.capacity, state, action)
-            self.route.append((state[3], state[4], state[2], state[0], state[1]))
+            self.route.append([state[3], state[4], state[2], state[0], state[1]])
         elif action == 5 and self.capacity[state[0], state[1], state[2]-1, 5] > 0 :
-            nextState = (state[0], state[1], state[2]-1, state[3], state[4])
+            nextState = [state[0], state[1], state[2]-1, state[3], state[4]]
             if self.passby[state[0], state[1], state[2]-1, 5] == 0:
                 self.passby[state[0], state[1], state[2]-1, 5]+=1
                 self.passby[state[0], state[1], state[2]-2, 4]+=1
                 self.capacity = updateCapacityRL(self.capacity, state, action)
-            self.route.append((state[3], state[4], state[2], state[0], state[1]))
+            self.route.append([state[3], state[4], state[2], state[0], state[1]])
         else:
 #             print("invalid action in the state", state, action)
             nextState = state
+            print("NOT TAKING ACTION")
             # reward = -2.0
 
         self.current_state = nextState
@@ -184,33 +190,47 @@ class GridGraph(object):
         # reward_d = -np.sum(np.abs(reward_d))/20.0
         # reward += reward_d
         done = False
-        if self.current_state[:3] == self.goal_state[:3]:
-            done = True
+        complete = False
+        # print(list(self.current_state)[:3], list(self.goal_state)[:3])
+        if list(self.current_state)[:3] == list(self.goal_state)[:3]:
             reward = 100.0
-            self.route.append((self.current_state[3], self.current_state[4], self.current_state[2],
-                               self.current_state[0], self.current_state[1]))
-        # elif np.sum(self.state2obsv()[3:9]) == 0:
-        #     done = True
-        #     self.twopin_pt = 100
-
+            self.route.append([self.current_state[3], self.current_state[4], self.current_state[2],
+                            self.current_state[0], self.current_state[1]])
+            complete = True
+            # self.sub_reset()
         elif self.current_step >= self.max_step:
-            done = True
-            self.route.append((self.current_state[3], self.current_state[4], self.current_state[2],
-                               self.current_state[0], self.current_state[1]))
+            self.route.append([self.current_state[3], self.current_state[4], self.current_state[2],
+                            self.current_state[0], self.current_state[1]])
+            complete = True
+            # self.sub_reset()
+        ##done is after all nets have been reached or last net exceeds max steps
+        ##sub_reset needs to be called for 
+        #   a) if goal_state is reached or b) max_step for 1 net exploration has been reached
         self.reward = self.reward + reward
+        self.netreward += reward
         self.instantreward = reward
         
-        # self.instantrewardcombo.append(reward)
+        # print(self.twopin_pt, self.reward)
+        if self.twopin_pt >= len(self.twopin_combo) and complete:
+            self.instantrewardcombo.append(self.netreward)
+            done = True
+            
+        elif complete:
+            self.instantrewardcombo.append(self.netreward)
+            self.reset()
+            
         return nextState, reward, done, []
-
 
     def reset(self):
         # if self.loop == 0:
         #     self.twopin_rdn =
         reward_plot = 0
         is_best = 0
+        self.netreward = 0.0
 
+        #condition to check if sub_reset or reset needs to be used
         if self.twopin_pt >= len(self.twopin_combo):
+            print("other kind of reset")
             self.episode = self.episode + 1
             self.twopin_pt = 0
             self.capacity = self.generate_capacity()
@@ -232,14 +252,15 @@ class GridGraph(object):
                     is_best = 1
             self.route_combo = []
             self.reward = 0.0
+            self.netreward = 0.0
             self.instantrewardcombo = []
             print('Positive two pin num: {}/{}'.format(self.posTwoPinNum,len(self.twopin_combo)))
             print('\nNew loop!')
             print('Episode: {num}'.format(num=self.episode+1))
 
-        self.init_state = self.twopin_combo[self.twopin_pt][0]
-        self.goal_state = self.twopin_combo[self.twopin_pt][1]
-        self.current_state = self.init_state
+        self.init_state = list(self.twopin_combo[self.twopin_pt][0])
+        self.goal_state = list(self.twopin_combo[self.twopin_pt][1])
+        self.current_state = list(self.init_state)
         self.current_step = 0
         self.pair_ind += 1
         if self.pair_ind>= self.net_pair[self.net_ind]:
@@ -252,7 +273,6 @@ class GridGraph(object):
         self.route_combo.append(self.route)
         self.route = []
         self.twopin_pt += 1
-
 
         return self.current_state, reward_plot, is_best
 
@@ -272,7 +292,6 @@ def updateCapacity(capacity,route):
         diff = [route[i+1][0]-route[i][0],
                 route[i+1][1]-route[i][1],
                 route[i+1][2]-route[i][2]]
-
         if diff[0] == 1:
             capacity[route[i][0],route[i][1],route[i][2]-1,0] -= 1
             capacity[route[i+1][0], route[i+1][1], route[i+1][2]-1,1] -= 1

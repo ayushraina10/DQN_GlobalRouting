@@ -3,7 +3,7 @@ import matplotlib
 import numpy as np
 
 
-import Initializer as init
+import Env.DQN_GlobalRouting.GlobalRoutingRL.Initializer as init
 
 # Create grid graph based on parsed input info
 
@@ -22,6 +22,7 @@ class GridGraph(object):
         self.twopin_rdn = None
         self.loop = 0
         self.reward = 0.0
+        self.netreward = 0.0
         self.instantreward = 0.0
         self.instantrewardcombo = []
         self.best_reward = 0.0
@@ -189,33 +190,47 @@ class GridGraph(object):
         # reward_d = -np.sum(np.abs(reward_d))/20.0
         # reward += reward_d
         done = False
+        complete = False
+        # print(list(self.current_state)[:3], list(self.goal_state)[:3])
         if list(self.current_state)[:3] == list(self.goal_state)[:3]:
-            done = True
             reward = 100.0
             self.route.append([self.current_state[3], self.current_state[4], self.current_state[2],
-                               self.current_state[0], self.current_state[1]])
-        # elif np.sum(self.state2obsv()[3:9]) == 0:
-        #     done = True
-        #     self.twopin_pt = 100
-
+                            self.current_state[0], self.current_state[1]])
+            complete = True
+            # self.sub_reset()
         elif self.current_step >= self.max_step:
-            done = True
             self.route.append([self.current_state[3], self.current_state[4], self.current_state[2],
-                               self.current_state[0], self.current_state[1]])
+                            self.current_state[0], self.current_state[1]])
+            complete = True
+            # self.sub_reset()
+        ##done is after all nets have been reached or last net exceeds max steps
+        ##sub_reset needs to be called for 
+        #   a) if goal_state is reached or b) max_step for 1 net exploration has been reached
         self.reward = self.reward + reward
+        self.netreward += reward
         self.instantreward = reward
         
-        # self.instantrewardcombo.append(reward)
+        # print(self.twopin_pt, self.reward)
+        if self.twopin_pt >= len(self.twopin_combo) and complete:
+            self.instantrewardcombo.append(self.netreward)
+            done = True
+            
+        elif complete:
+            self.instantrewardcombo.append(self.netreward)
+            self.reset()
+            
         return nextState, reward, done, []
-
 
     def reset(self):
         # if self.loop == 0:
         #     self.twopin_rdn =
         reward_plot = 0
         is_best = 0
+        self.netreward = 0.0
 
+        #condition to check if sub_reset or reset needs to be used
         if self.twopin_pt >= len(self.twopin_combo):
+            print("other kind of reset")
             self.episode = self.episode + 1
             self.twopin_pt = 0
             self.capacity = self.generate_capacity()
@@ -237,6 +252,7 @@ class GridGraph(object):
                     is_best = 1
             self.route_combo = []
             self.reward = 0.0
+            self.netreward = 0.0
             self.instantrewardcombo = []
             print('Positive two pin num: {}/{}'.format(self.posTwoPinNum,len(self.twopin_combo)))
             print('\nNew loop!')

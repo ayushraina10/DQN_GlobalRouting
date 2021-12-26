@@ -4,8 +4,10 @@ import numpy as np
 import json
 import time
 
-import Initializer as init
-import GridGraph as graph
+import Env.DQN_GlobalRouting.GlobalRoutingRL.Initializer as init
+import Env.DQN_GlobalRouting.GlobalRoutingRL.GridGraph as graph
+import Env.DQN_GlobalRouting.GlobalRoutingRL.routing_utils as ru
+
 from copy import deepcopy
 
 import glob
@@ -13,7 +15,7 @@ import os
 
 #ordering for np arrays in state checkpoint
 # self.array_pt = [type(x) == np.ndarray for x in checkpoint_state]
-array_pt = [False, False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, False, False, False]
+array_pt = [False, False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True, False, False, False, False, False, False]
 
 
 """Create grid graph API that wraps the original GridGraph enviuoirnment to enable 3 things:
@@ -23,11 +25,9 @@ array_pt = [False, False, False, False, False, False, True, False, False, False,
 """
 
 #creating the wrapper function for therouting environment:
-import routing_utils as ru
 
 class RoutingAPI():
-
-    def __init__(self, filename = "benchmark_reduced/test_benchmark_7.gr", max_step = 100):
+    def __init__(self, filename = "benchmark_reduced/test_benchmark_7.gr", max_iterations = 100):
     #initialization of variables that control the wrapper function and the original environment
     
         """Functions in utils:
@@ -45,18 +45,25 @@ class RoutingAPI():
 
         # # GridGraph environment
         self.gridgraph = graph.GridGraph(init.gridParameters(grid_info))
-        self.gridgraph.max_step = max_step
+        self.gridgraph.max_step = max_iterations
         self.capacity = self.gridgraph.generate_capacity()
 
         twopinlist_nonet, twoPinNumEachNet, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort = ru._processTwoPinData(self.gridParameters, grid_info, self.capacity)
 
         # DRL Module from here
-        self.gridgraph.max_step = max_step #20
+        self.gridgraph.max_step = max_iterations #20
         self.gridgraph.twopin_combo = twopinlist_nonet
         # print('twopinlist_nonet',twopinlist_nonet)
         self.gridgraph.net_pair = twoPinNumEachNet
         # self.gridgraph.reset()
-    
+
+        # #action 5, 6 loop
+        # self.check_loop = []
+
+
+    def getActionSize(self):
+        return 50, 7
+
     def _generate_image(self, compState = None):
         """
         Input:
@@ -71,8 +78,10 @@ class RoutingAPI():
         ## variables for distance frorm goal, agent location
         if compState is not None:
             self.reset_to(compState = compState)
-    
-        return np.sum(self.gridgraph.capacity, axis = 2)
+
+        reduced = np.sum(self.gridgraph.capacity, axis = 2)
+        # print("API, gen image", reduced.shape)
+        return np.moveaxis(reduced, 2, 0)
     
     def saveCheckpoint(self):
         """
@@ -89,7 +98,7 @@ class RoutingAPI():
                 self.gridgraph.twopin_combo, self.gridgraph.twopin_pt, self.gridgraph.twopin_rdn, self.gridgraph.loop, \
                 self.gridgraph.reward, self.gridgraph.instantreward, self.gridgraph.instantrewardcombo, self.gridgraph.best_reward, \
                 self.gridgraph.best_route, self.gridgraph.route_combo, self.gridgraph.net_pair, self.gridgraph.net_ind, self.gridgraph.pair_ind, \
-                self.gridgraph.passby, self.gridgraph.previous_action, self.gridgraph.posTwoPinNum, self.gridgraph.episode, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort]
+                self.gridgraph.passby, self.gridgraph.previous_action, self.gridgraph.posTwoPinNum, self.gridgraph.episode, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort, self.gridgraph.netreward]
             json_dump = [json.dumps(item) if not flag else json.dumps(item.tolist()) for item, flag in zip(checkpoint_state, self.array_pt)]
 
             # chks = glob.glob("checkpoint_info/*npy")
@@ -107,7 +116,7 @@ class RoutingAPI():
                     self.gridgraph.twopin_combo, self.gridgraph.twopin_pt, self.gridgraph.twopin_rdn, self.gridgraph.loop, \
                     self.gridgraph.reward, self.gridgraph.instantreward, self.gridgraph.instantrewardcombo, self.gridgraph.best_reward, \
                     self.gridgraph.best_route, self.gridgraph.route_combo, self.gridgraph.net_pair, self.gridgraph.net_ind, self.gridgraph.pair_ind, \
-                    self.gridgraph.passby, self.gridgraph.previous_action, self.gridgraph.posTwoPinNum, self.gridgraph.episode, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort])       
+                    self.gridgraph.passby, self.gridgraph.previous_action, self.gridgraph.posTwoPinNum, self.gridgraph.episode, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort, self.gridgraph.netreward])       
         # return [deepcopy(self.gridParameters), self.gridgraph.max_step, self.gridgraph.current_step, self.gridgraph.goal_state, \
         #         self.gridgraph.init_state, self.gridgraph.current_state, self.gridgraph.capacity, self.gridgraph.route, \
         #         self.gridgraph.twopin_combo, self.gridgraph.twopin_pt, self.gridgraph.twopin_rdn, self.gridgraph.loop, \
@@ -148,16 +157,22 @@ class RoutingAPI():
                 self.gridgraph.twopin_combo, self.gridgraph.twopin_pt, self.gridgraph.twopin_rdn, self.gridgraph.loop, \
                 self.gridgraph.reward, self.gridgraph.instantreward, self.gridgraph.instantrewardcombo, self.gridgraph.best_reward, \
                 self.gridgraph.best_route, self.gridgraph.route_combo, self.gridgraph.net_pair, self.gridgraph.net_ind, self.gridgraph.pair_ind, \
-                self.gridgraph.passby, self.gridgraph.previous_action, self.gridgraph.posTwoPinNum, self.gridgraph.episode, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort = checkpoint_state_loaded 
+                self.gridgraph.passby, self.gridgraph.previous_action, self.gridgraph.posTwoPinNum, self.gridgraph.episode, self.gridgraph.twoPinEachNetClear, self.gridgraph.netSort, self.gridgraph.netreward = checkpoint_state_loaded 
         
         if debug:
             import pdb; pdb.set_trace()
         
         """self.gridgraph.route, self.gridgraph.reward, self.gridgraph.instantreward,"""
 
+    def getState(self, compState = None):
+        if compState is not None:
+            self.reset_to(checkpoint_state = compState)
+        image = self._generate_image()
+        checkpoint = self.saveCheckpoint()
+        return [image, None, checkpoint]
+
     def _mapAction(self, action = None):
         """This function maps complex action to the basic functions in the older environment"""
-        
         direction, distance = action
         # if distance<1:
         #     return self.gridgraph.step(direction)
@@ -169,8 +184,14 @@ class RoutingAPI():
             distance-=1
 
         next_state, reward, done, _ = self.gridgraph.step(direction)
-        rewards_acc+=reward
-        return next_state, rewards_acc, done, _
+        rewards_acc += reward
+
+        ##still need to think about normalizing the visual image
+        image = self._generate_image()
+        # print("image", image.shape)
+        checkpoint = self.saveCheckpoint()
+
+        return [image, next_state, checkpoint], rewards_acc, done, _
         
     def getNextState(self, compState = None, action = None):
         """
@@ -179,7 +200,7 @@ class RoutingAPI():
         action = [direction: one-hot, distance: one-hot] (0-5, 0-N)
         
         Output:
-        nextCompState = [nextObservation, [updated list of state variables]]
+        nextCompState = [visualOutput, [updated list of state variables]]
         reward
         done
         _
@@ -190,7 +211,6 @@ class RoutingAPI():
         - map complex action to basic actions (repeat action)
         - return the update the step output
         """
-        
         #get next state
         ##mapping function that converts the complex action 
         ##into a sequence of unit actions
@@ -198,10 +218,12 @@ class RoutingAPI():
         if compState is not None:
             self.reset_to(checkpoint_state = compState)
         
-        # direction = np.argmax(action[:6])
+        
         # distance = np.argmax(action[6:])
-        direction, distance = action
-            
+        assert len(action) == 7
+        direction = np.argmax(action[:6])
+        distance = action[-1]
+        
         return self._mapAction([direction, distance])
         
     def getValidMoves(self, compState = None, spatial_region = None):
@@ -239,6 +261,10 @@ class RoutingAPI():
                             feasible.append([d, s])
                         break
                 distance -= 1
+        
+        if len(feasible) > 1:
+            feasible = np.random.permutation(feasible[:])
+
         return feasible
         
     def getReward(self, compState = None):

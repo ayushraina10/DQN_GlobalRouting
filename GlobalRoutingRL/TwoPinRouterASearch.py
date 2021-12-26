@@ -3,9 +3,9 @@ import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-import Initializer as init
-import GridGraph as gridgraph
-import Router
+import Env.DQN_GlobalRouting.GlobalRoutingRL.Initializer as init
+import Env.DQN_GlobalRouting.GlobalRoutingRL.GridGraph as gridgraph
+# import Router
 
 import matplotlib.patches as patches
 import numpy as np

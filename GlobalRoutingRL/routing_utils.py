@@ -1,7 +1,9 @@
 import operator
-import TwoPinRouterASearch as twoPinASearch
-import Initializer as init
-import MST as tree
+import Env.DQN_GlobalRouting.GlobalRoutingRL.TwoPinRouterASearch as twoPinASearch
+import Env.DQN_GlobalRouting.GlobalRoutingRL.Initializer as init
+import Env.DQN_GlobalRouting.GlobalRoutingRL.MST as tree
+
+
 import numpy as np
 
 def _processTwoPinData(gridParameters, grid_info, capacity):

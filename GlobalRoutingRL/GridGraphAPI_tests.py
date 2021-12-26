@@ -97,6 +97,7 @@ def test2(lookahead = True):
                 # observation = env.gridgraph.state2obsv()
                 start = time.time()
                 actions = env.getValidMoves()
+                print(actions, len(actions))
 
                 selected_action = None
                 checkpoint = None
@@ -278,15 +279,96 @@ def test5():
         print("Are the set of actions same", _areidentical(new_actions, actions))
         print("Are states same", _areidentical(nextstate, new_nextstate))
 
+def test2_newReset(lookahead = False):
+    #a unit test to check functionality: resuming of states, generating feasible actions, 
+    ##also includes a clear algo for carrying out an episode
+    print("Lookahead", lookahead)
+    for i in range(10):
+        filename = f"benchmark_reduced/test_benchmark_{i+1}.gr"
+        env = RoutingAPI(filename = filename)
+        # copy_env = RoutingAPI(filename = filename)
+        episodes = 3
 
+        reward_log = []
+        test_reward_log = []
+        test_episode = []
+        solution_combo = []
 
+        reward_plot_combo = []
+        reward_plot_combo_pure = []
+
+        start_ep = time.time()
+
+        for episode in range(episodes):
+            solution_combo.append(env.gridgraph.route)
+            state, reward_plot, is_best = env.gridgraph.reset()
+            # state, reward_plot, is_best = copy_env.gridgraph.reset()
+
+            reward_plot_pure = reward_plot-env.gridgraph.posTwoPinNum*100
+
+            # print(episode)
+            # if episode% len(env.gridgraph.twopin_combo) == 0:
+            print(filename, env.gridgraph.instantrewardcombo)
+            reward_plot_combo.append(reward_plot)
+            reward_plot_combo_pure.append(reward_plot_pure)
+            print("one main episode takes", time.time() - start_ep)
+            start_ep = time.time()
+            
+            times = []
+            rewardi = 0.0
+            rewardfortwopin = 0
+            is_terminal = False
+
+            ctr = 0
+            while not is_terminal:
+                # observation = env.gridgraph.state2obsv()
+                start = time.time()
+                actions = env.getValidMoves()
+                # print(actions, len(actions))
+                selected_action = None
+                checkpoint = None
+                if lookahead:
+                    checkpoint = env.saveCheckpoint()
+                    # np.save("check.npy", checkpoint)
+                    # print("length of checkpoint", len(checkpoint))
+                    rewards = []
+                    for take_action in actions:
+                        # _, reward, is_terminal, _ = copy_env.getNextState(compState = checkpoint, action = action)
+                        _, reward, is_terminal, _ = env.getNextState(compState = checkpoint, action = take_action)
+                        rewards.append(reward)
+
+                    i = np.argmax(rewards)
+                    # env.reset_to(checkpoint_state=checkpoint)
+                    # nextstate1, reward, is_terminal, _ = env.getNextState(action = actions[i])
+                    nextstate1, reward, is_terminal, _ = env.getNextState(compState = checkpoint, action = actions[i])
+                    selected_action = actions[i]
+                    # print("TOOK ACTION", selected_action)
+
+                else:
+                    # checkpoint = env.saveCheckpoint()
+                    i = np.random.randint(0, len(actions))
+                    nextstate1, reward, is_terminal, _ = env.getNextState(action = actions[i])
+                    # _, reward, is_terminal, _ = env.getNextState(compState = checkpoint, action = actions[i])
+                    selected_action = actions[i]
+
+                # print("Time taken for one action", time.time()-start)
+                times.append(time.time()-start)
+                rewardi = rewardi+reward
+                rewardfortwopin = rewardfortwopin + reward
+
+                ctr+=1
+            print("iterations", ctr)
+            print(filename, env.gridgraph.instantrewardcombo)
+            reward_log.append(rewardi)
+            # env.gridgraph.instantrewardcombo.append(rewardfortwopin)
 
 if __name__ == '__main__':
     
     # test3()
 
     #compare a random episode vs one-step lookahead epsiode
-    test2(lookahead = False)
+    test2_newReset(lookahead = True)
+    # test2(lookahead = False)
 
 
     
